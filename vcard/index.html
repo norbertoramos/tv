@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarjeta de visita</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+ <!-- ============================================================
+       DATOS DEL CONTACTO — edita solo esta sección
+       ============================================================ -->
+  <script>
+    const CARD = {
+      nombre:    "Norberto M.",
+      apellido:  "Ramos Calero",
+      cargo:     "Director del Campus Virtual",
+      empresa:   "Universidad de Las Palmas de Gran Canaria",
+      email:     "norberto.ramos@ulpgc.es",
+      telefono:  "+34 928 45 1010",
+      web:       "https://www.ulpgc.es",
+      linkedin:  "linkedin.com/in/norberto-m-ramos-calero",
+      /*telefono2: "+34 928 45 1010",        /* teléfono fijo de trabajo */
+      whatsapp:  "+34928458972",           /* sin espacios para el enlace wa.me */
+      orcid:     "0000-0001-9426-4100",    /* https://orcid.org/0000-0001-9426-4100 */
+      europass:  "n008ngnd",               /* https://europa.eu/europass/eportfolio/screen/user/n008ngnd */
+      /*
+       * FOTO — pega aquí la imagen codificada en base64.
+       * Cómo obtenerla:
+       *   Opción A (navegador): abre la consola del navegador (F12),
+       *     arrastra tu imagen a la pestaña Sources, o usa este snippet:
+       *     > const toB64 = f => new Promise(r => { const fr = new FileReader();
+       *         fr.onload = e => r(e.target.result); fr.readAsDataURL(f); });
+       *     > const [f] = await new Promise(r => { const i = document.createElement('input');
+       *         i.type='file'; i.onchange=()=>r(i.files); i.click(); });
+       *     > console.log(await toB64(f));   // copia el resultado
+       *
+       *   Opción B (terminal):
+       *     base64 -i foto.jpg | tr -d '\n'   → añade "data:image/jpeg;base64," delante
+       *
+       *   Opción C (Python):
+       *     import base64; print("data:image/jpeg;base64," +
+       *       base64.b64encode(open("foto.jpg","rb").read()).decode())
+       *
+       * El valor debe empezar por:  "data:image/jpeg;base64,..."
+       *                         o:  "data:image/png;base64,..."
+       */
+      /* FOTO — ruta al archivo de imagen en el servidor.
+       * Pon "foto.jpg" en la misma carpeta que este HTML,
+       * o usa una ruta relativa como "img/ana.png".
+       * La visualización usa <img src> directamente.
+       * Al descargar el vCard, la imagen se convierte a base64
+       * automáticamente y se incrusta en el campo PHOTO.
+       * Deja "" si no hay foto. */
+      foto: "./foto.jpg",
+      /* Colores corporativos ULPGC (Manual de Identidad Visual Corporativa):
+         Azul principal   #0066A1  PANTONE 3015  RGB 0,102,161
+         Naranja principal #FFA100  PANTONE 137   RGB 255,161,0
+         Gris profundo    #545859  PANTONE 425   RGB 84,88,89   */
+      color: "linear-gradient(135deg, #003a5c 0%, #004f7c 55%, #0066A1 100%)"
+    };
+    const QR = {
+      web:       "https://norbertoramos.ulpgc.es/vcard"
+    };
+  </script>
+  <!-- ============================================================ -->
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f0efe9;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Card ─────────────────────────────────── */
+    .card {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 20px;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,.18), 0 8px 20px rgba(0,0,0,.1);
+    }
+
+    .blob1 {
+      position: absolute; top: -60px; right: -60px;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: rgba(255,161,0,.12); pointer-events: none;
+    }
+    .blob2 {
+      position: absolute; bottom: -50px; left: -30px;
+      width: 160px; height: 160px; border-radius: 50%;
+      background: rgba(255,161,0,.07); pointer-events: none;
+    }
+
+    /* ── Header: avatar + nombre ──────────────── */
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+      margin-bottom: 18px;
+    }
+
+    .avatar {
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid rgba(255,161,0,.7);
+      background: rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .avatar img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+
+    .avatar-placeholder {
+      width: 32px; height: 32px;
+      stroke: rgba(255,255,255,.3);
+      fill: none;
+    }
+
+    .card-name {
+      font-size: 22px;
+      font-weight: 500;
+      color: #fff;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+
+    .card-job {
+      font-size: 12px;
+      color: rgba(255,255,255,.5);
+      margin-bottom: 7px;
+    }
+
+    .card-company {
+      display: inline-block;
+      font-size: 11px;
+      color: #FFA100;
+      background: rgba(255,161,0,.15);
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 0.5px solid rgba(255,161,0,.4);
+    }
+
+    /* ── Divider ──────────────────────────────── */
+    .divider {
+      height: 0.5px;
+      background: rgba(255,255,255,.1);
+      margin: 0 0 16px;
+      position: relative; z-index: 1;
+    }
+
+    /* ── Contact rows ─────────────────────────── */
+    .contacts {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      position: relative; z-index: 1;
+      margin-bottom: 20px;
+    }
+
+    .contact-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: rgba(255,255,255,.75);
+      text-decoration: none;
+    }
+
+    .contact-row:hover { color: #fff; }
+
+    .contact-row svg {
+      width: 14px; height: 14px;
+      stroke: rgba(255,161,0,.9);
+      fill: none;
+      stroke-width: 1.8;
+      flex-shrink: 0;
+    }
+
+    /* ── QR + botones ─────────────────────────── */
+    .card-footer {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative; z-index: 1;
+      border-top: 0.5px solid rgba(255,255,255,.1);
+      padding-top: 16px;
+    }
+
+    .qr-wrap {
+      background: #fff;
+      border-radius: 10px;
+      padding: 7px;
+      flex-shrink: 0;
+      width: 76px; height: 76px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .footer-actions {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .footer-label {
+      font-size: 10px;
+      color: rgba(255,255,255,.35);
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .dl-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s, transform .1s;
+      line-height: 1;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .dl-btn:active { transform: scale(.97); }
+
+    .dl-btn svg {
+      width: 12px; height: 12px; flex-shrink: 0;
+    }
+
+    .btn-android {
+      background: rgba(255,161,0,.9);
+      color: #003a5c;
+    }
+    .btn-android:hover { background: #FFA100; }
+
+    .btn-ios {
+      background: rgba(255,255,255,.12);
+      color: rgba(255,255,255,.85);
+      border: 0.5px solid rgba(255,255,255,.2) !important;
+    }
+    .btn-ios:hover { background: rgba(255,255,255,.2); }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="card">
+    <div class="blob1"></div>
+    <div class="blob2"></div>
+
+    <div class="card-header">
+      <div class="avatar" id="avatar">
+        <svg class="avatar-placeholder" viewBox="0 0 24 24" stroke-width="1.3">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-name" id="cn-name"></div>
+        <div class="card-job"  id="cn-job"></div>
+        <div class="card-company" id="cn-company"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="contacts" id="contacts"></div>
+
+    <div class="card-footer">
+      <div class="qr-wrap">
+        <div id="qr"></div>
+      </div>
+      <div class="footer-actions">
+        <div class="footer-label">Guardar contacto</div>
+        <button class="dl-btn btn-android" onclick="downloadVCard(false)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 15V3m0 12-4-4m4 4 4-4"/>
+            <path d="M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/>
+          </svg>
+          Android / General
+        </button>
+        <button class="dl-btn btn-ios" onclick="downloadVCard(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"/>
+            <path d="M10 2c0 2.5.5 4 3 4"/>
+          </svg>
+          iPhone / iOS
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── Render card from CARD constants ──────── */
+    document.title = `${CARD.nombre} ${CARD.apellido} · ${CARD.empresa}`;
+    document.getElementById('card').style.background = CARD.color;
+    document.getElementById('cn-name').textContent    = `${CARD.nombre} ${CARD.apellido}`;
+    document.getElementById('cn-job').textContent     = CARD.cargo;
+    document.getElementById('cn-company').textContent = CARD.empresa;
+
+    /* Avatar — src directo desde el servidor */
+    if (CARD.foto) {
+      document.getElementById('avatar').innerHTML =
+        `<img src="${CARD.foto}" alt="${CARD.nombre}">`;
+    }
+
+    /* Precarga la foto como base64 para incrustarla en el vCard al descargar */
+    let fotoBase64 = null;
+    let fotoMime   = 'image/jpeg';
+
+    if (CARD.foto) {
+      fetch(CARD.foto)
+        .then(r => {
+          fotoMime = r.headers.get('content-type') || 'image/jpeg';
+          return r.blob();
+        })
+        .then(blob => new Promise(resolve => {
+          const fr = new FileReader();
+          fr.onload = e => resolve(e.target.result);
+          fr.readAsDataURL(blob);
+        }))
+        .then(dataURL => {
+          fotoBase64 = dataURL.split(',')[1];
+        })
+        .catch(() => { /* foto no disponible — vCard sin imagen */ });
+    }
+
+    /* Contact rows */
+    const contactDefs = [
+      {
+        href: `mailto:${CARD.email}`,
+        label: CARD.email,
+        d: 'M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z',
+        show: CARD.email
+      },
+      {
+        href: `tel:${CARD.telefono}`,
+        label: CARD.telefono,
+        d: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.33 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z',
+        show: CARD.telefono
+      },
+      {
+        href: CARD.web,
+        label: CARD.web.replace(/^https?:\/\//, ''),
+        d: 'M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z',
+        show: CARD.web
+      },
+      {
+        href: `https://${CARD.linkedin}`,
+        label: CARD.linkedin,
+        d: 'M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z M4 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+        show: CARD.linkedin
+      },
+      {
+        href: `tel:${CARD.telefono2}`,
+        label: `${CARD.telefono2} (trabajo)`,
+        d: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.33 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z',
+        show: CARD.telefono2
+      },
+      {
+        href: `https://wa.me/${CARD.whatsapp.replace(/\D/g,'')}`,
+        label: `${CARD.whatsapp} (WhatsApp)`,
+        d: 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.523 5.857L.057 23.882l6.198-1.625A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z',
+        show: CARD.whatsapp
+      },
+      {
+        href: `https://orcid.org/${CARD.orcid}`,
+        label: `ORCID: ${CARD.orcid}`,
+        d: 'M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1.5 4.5h3v1.5h-3V6.5zm0 3h3v8h-3v-8z',
+        show: CARD.orcid
+      },
+      {
+        href: `https://europa.eu/europass/eportfolio/screen/user/${CARD.europass}`,
+        label: `Europass: ${CARD.europass}`,
+        d: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z',
+        show: CARD.europass
+      }
+    ];
+
+    const container = document.getElementById('contacts');
+    contactDefs.forEach(({ href, label, d, show }) => {
+      if (!show) return;
+      const a = document.createElement('a');
+      a.className = 'contact-row';
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.innerHTML = `<svg viewBox="0 0 24 24"><path d="${d}"/></svg><span>${label}</span>`;
+      container.appendChild(a);
+    });
+
+    /* QR code — solo la URL web */
+    new QRCode(document.getElementById('qr'), {
+      text: QR.web || CARD.web,
+      width: 62,
+      height: 62,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    /* ── Build & download vCard ───────────────── */
+    function buildVCard(ios) {
+      const webUrl = CARD.web.startsWith('http') ? CARD.web : 'https://' + CARD.web;
+      const lines = [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        `N:${CARD.apellido};${CARD.nombre};;;`,
+        `FN:${CARD.nombre} ${CARD.apellido}`,
+        CARD.empresa  ? `ORG:${CARD.empresa}`   : '',
+        CARD.cargo    ? `TITLE:${CARD.cargo}`    : '',
+        CARD.email    ? (ios
+            ? `EMAIL;type=INTERNET;type=WORK;type=pref:${CARD.email}`
+            : `EMAIL;TYPE=INTERNET,WORK:${CARD.email}`) : '',
+        CARD.telefono ? (ios
+            ? `TEL;type=CELL;type=VOICE;type=pref:${CARD.telefono}`
+            : `TEL;TYPE=CELL:${CARD.telefono}`) : '',
+        CARD.web      ? (ios
+            ? `URL;type=pref:${webUrl}`
+            : `URL:${webUrl}`) : '',
+        CARD.linkedin  ? `X-SOCIALPROFILE;type=linkedin:${CARD.linkedin}` : '',
+        CARD.telefono2 ? (ios
+            ? `TEL;type=WORK;type=VOICE:${CARD.telefono2}`
+            : `TEL;TYPE=WORK,VOICE:${CARD.telefono2}`) : '',
+        CARD.whatsapp  ? (ios
+            ? `TEL;type=CELL;type=X-WHATSAPP:${CARD.whatsapp}`
+            : `TEL;TYPE=CELL,X-WHATSAPP:${CARD.whatsapp}`) : '',
+        CARD.orcid     ? `URL;type=ORCID:https://orcid.org/${CARD.orcid}` : '',
+        CARD.europass  ? `URL;type=Europass:https://europa.eu/europass/eportfolio/screen/user/${CARD.europass}` : '',
+        /* foto incrustada en base64 (cargada por fetch al inicio) */
+        ...(fotoBase64 ? (() => {
+          const type   = fotoMime === 'image/png' ? 'PNG' : 'JPEG';
+          const raw    = `PHOTO;ENCODING=b;TYPE=${type}:${fotoBase64}`;
+          /* RFC vCard: líneas de máximo 75 caracteres, continuación con CRLF+espacio */
+          const folded = raw.match(/.{1,75}/g).join('\r\n ');
+          return [folded];
+        })() : []),
+        'END:VCARD'
+      ];
+      return lines.filter(Boolean).join('\r\n');
+    }
+
+    function downloadVCard(ios) {
+      const vcard    = buildVCard(ios);
+      const isIOS    = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const isMobile = isIOS || isAndroid;
+
+      if (isIOS) {
+        /* iOS Safari: navegar a data URL abre "Añadir a Contactos" directamente.
+           Requiere HTTPS en producción. */
+        window.location.href =
+          'data:text/x-vcard;charset=utf-8,' + encodeURIComponent(vcard);
+        return;
+      }
+
+      const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+
+      if (isAndroid) {
+        /* Android Chrome: sin atributo download, el SO ofrece abrir con Contactos */
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        /* Escritorio: descarga normal con nombre de archivo */
+        a.download = `${CARD.nombre}_${CARD.apellido}${ios ? '_ios' : ''}.vcf`
+                       .replace(/\s+/g, '_');
+        a.click();
+      }
+
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  </script>
+</body>
+</html>
