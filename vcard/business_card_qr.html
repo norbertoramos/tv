@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de tarjeta de visita</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .app { max-width: 980px; margin: 0 auto; }
+
+    h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 640px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Panel ── */
+    .panel {
+      background: #fff;
+      border: 0.5px solid rgba(0,0,0,.1);
+      border-radius: 14px;
+      padding: 1.25rem;
+    }
+    .panel-title {
+      font-size: 11px; font-weight: 500; color: #888;
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: .9rem;
+    }
+
+    /* ── Form ── */
+    .field { margin-bottom: .6rem; }
+    .field label { display: block; font-size: 12px; color: #666; margin-bottom: 3px; }
+    .field input {
+      width: 100%; font-size: 13px; padding: 6px 10px;
+      border: 0.5px solid rgba(0,0,0,.18); border-radius: 8px;
+      background: #fafafa; color: #1a1a1a; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field input:focus {
+      border-color: #0066A1;
+      box-shadow: 0 0 0 2px rgba(0,102,161,.12);
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .field-group-label {
+      font-size: 10px; font-weight: 500; color: #aaa;
+      text-transform: uppercase; letter-spacing: .07em;
+      margin: .8rem 0 .4rem;
+    }
+
+    /* ── Photo upload ── */
+    .photo-upload {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: .9rem; padding: .75rem;
+      background: #f7f7f5; border-radius: 10px;
+      border: 0.5px solid rgba(0,0,0,.08);
+    }
+    .photo-thumb {
+      width: 52px; height: 52px; border-radius: 50%; overflow: hidden;
+      flex-shrink: 0; background: #ececec;
+      border: 0.5px solid rgba(0,0,0,.1);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .photo-thumb svg { width: 20px; height: 20px; stroke: #aaa; }
+    .photo-info { flex: 1; }
+    .photo-info p { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
+    .photo-info span { font-size: 11px; color: #888; }
+    .photo-btn {
+      font-size: 11px; padding: 5px 11px;
+      border: 0.5px solid rgba(0,0,0,.15); border-radius: 8px;
+      background: #fff; color: #1a1a1a; cursor: pointer;
+    }
+    .photo-btn:hover { background: #f0f0f0; }
+
+    /* ── Color themes ── */
+    .theme-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .theme-dot {
+      width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: border-color .15s; flex-shrink: 0;
+    }
+    .theme-dot.active { border-color: #1a1a1a; }
+
+    /* ── Business Card preview ── */
+    .bcard {
+      border-radius: 16px; padding: 1.4rem;
+      position: relative; overflow: hidden;
+      background: linear-gradient(135deg, #003a5c 0%, #004f7c 55%, #0066A1 100%);
+    }
+    .bcard-accent {
+      position: absolute; top: -50px; right: -50px;
+      width: 160px; height: 160px; border-radius: 50%;
+      background: rgba(255,161,0,.13); pointer-events: none;
+    }
+    .bcard-accent2 {
+      position: absolute; bottom: -40px; left: -25px;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,161,0,.07); pointer-events: none;
+    }
+    .bcard-header {
+      display: flex; align-items: flex-start; gap: 14px;
+      position: relative; z-index: 1; margin-bottom: 14px;
+    }
+    .bcard-avatar {
+      width: 58px; height: 58px; border-radius: 50%; overflow: hidden;
+      flex-shrink: 0; border: 2px solid rgba(255,161,0,.6);
+      background: rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .bcard-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .bcard-avatar svg { width: 26px; height: 26px; stroke: rgba(255,255,255,.3); fill: none; }
+    .bcard-name { font-size: 17px; font-weight: 500; color: #fff; margin-bottom: 2px; line-height: 1.2; }
+    .bcard-jobtitle { font-size: 11px; color: rgba(255,255,255,.5); margin-bottom: 6px; }
+    .bcard-org {
+      display: inline-block; font-size: 10px;
+      color: #FFA100; background: rgba(255,161,0,.15);
+      padding: 2px 8px; border-radius: 20px;
+      border: 0.5px solid rgba(255,161,0,.35);
+    }
+    .bcard-divider {
+      height: 0.5px; background: rgba(255,255,255,.1);
+      margin: 0 0 10px; position: relative; z-index: 1;
+    }
+    .bcard-contacts {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 5px; position: relative; z-index: 1;
+    }
+    .bcard-contact {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 10px; color: rgba(255,255,255,.65); min-width: 0;
+    }
+    .bcard-contact span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bc-ico {
+      width: 11px; height: 11px; stroke: rgba(255,161,0,.85);
+      fill: none; stroke-width: 1.8; flex-shrink: 0;
+    }
+
+    /* ── QR box ── */
+    .qr-box {
+      display: flex; gap: 1rem; align-items: center; padding: 1rem;
+      background: #f7f7f5; border-radius: 12px;
+      border: 0.5px solid rgba(0,0,0,.08);
+    }
+    .qr-canvas-wrap {
+      background: #fff; border-radius: 10px; padding: 8px;
+      flex-shrink: 0; width: 100px; height: 100px;
+      display: flex; align-items: center; justify-content: center;
+      border: 0.5px solid rgba(0,0,0,.07);
+    }
+    .qr-label { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+    .qr-url { font-size: 11px; color: #888; word-break: break-all; margin-bottom: 6px; }
+    .qr-note { font-size: 10px; color: #aaa; line-height: 1.5; }
+
+    /* ── Buttons ── */
+    .btns { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 500;
+      cursor: pointer; border: 0.5px solid rgba(0,0,0,.15);
+      background: #f5f5f0; color: #1a1a1a;
+      transition: background .15s, transform .1s; line-height: 1;
+      font-family: inherit;
+    }
+    .btn:hover { background: #ebebeb; }
+    .btn:active { transform: scale(.98); }
+    .btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .btn-primary { background: #0066A1; border-color: #0066A1; color: #fff; }
+    .btn-primary:hover { background: #004f7c; border-color: #004f7c; }
+    .btn-ios { background: #111; border-color: #111; color: #fff; }
+    .btn-ios:hover { background: #222; border-color: #222; }
+    .dl-note { font-size: 10px; color: #aaa; margin-top: .5rem; line-height: 1.5; }
+
+    .right-col { display: flex; flex-direction: column; gap: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Generador de tarjeta de visita</h1>
+    <p class="subtitle">Rellena los datos, elige color y descarga el contacto</p>
+
+    <div class="layout">
+
+      <!-- ── FORMULARIO ── -->
+      <div class="panel">
+        <p class="panel-title">Datos del contacto</p>
+
+        <!-- Foto -->
+        <div class="photo-upload">
+          <div class="photo-thumb" id="photo-thumb" onclick="document.getElementById('photo-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            </svg>
+          </div>
+          <div class="photo-info">
+            <p>Foto de perfil</p>
+            <span>JPG, PNG · recomendado 400×400px</span>
+          </div>
+          <button class="photo-btn" onclick="document.getElementById('photo-input').click()">Subir</button>
+          <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+        </div>
+
+        <!-- Nombre -->
+        <div class="row">
+          <div class="field"><label>Nombre</label><input id="fname" placeholder="Ana" oninput="updateCard()"></div>
+          <div class="field"><label>Apellido</label><input id="lname" placeholder="García" oninput="updateCard()"></div>
+        </div>
+        <div class="field"><label>Cargo</label><input id="jobtitle" placeholder="Directora de Marketing" oninput="updateCard()"></div>
+        <div class="field"><label>Empresa / Organización</label><input id="org" placeholder="Acme Corp" oninput="updateCard()"></div>
+
+        <!-- Contacto -->
+        <p class="field-group-label">Contacto</p>
+        <div class="field"><label>Email</label><input id="email" type="email" placeholder="ana@acme.com" oninput="updateCard()"></div>
+        <div class="row">
+          <div class="field"><label>Teléfono móvil</label><input id="phone" placeholder="+34 600 000 000" oninput="updateCard()"></div>
+          <div class="field"><label>Teléfono trabajo</label><input id="phone2" placeholder="+34 928 000 000" oninput="updateCard()"></div>
+        </div>
+        <div class="field"><label>WhatsApp <span style="color:#aaa;font-size:10px">(sin espacios)</span></label><input id="whatsapp" placeholder="+34600000000" oninput="updateCard()"></div>
+
+        <!-- Web y redes -->
+        <p class="field-group-label">Web y redes</p>
+        <div class="field"><label>Web institucional</label><input id="web" placeholder="https://www.acme.com" oninput="updateCard()"></div>
+        <div class="field"><label>LinkedIn</label><input id="linkedin" placeholder="linkedin.com/in/..." oninput="updateCard()"></div>
+        <div class="field"><label>ORCID</label><input id="orcid" placeholder="0000-0000-0000-0000" oninput="updateCard()"></div>
+        <div class="field"><label>Europass <span style="color:#aaa;font-size:10px">(nick)</span></label><input id="europass" placeholder="n008ngnd" oninput="updateCard()"></div>
+
+        <!-- QR -->
+        <p class="field-group-label">Código QR</p>
+        <div class="field">
+          <label>URL del QR <span style="color:#aaa;font-size:10px">(independiente de la web)</span></label>
+          <input id="qrurl" placeholder="https://tu-dominio.es/vcard" oninput="updateCard()">
+        </div>
+
+        <!-- Color -->
+        <p class="field-group-label">Color de tarjeta</p>
+        <div class="theme-row" id="themes">
+          <div class="theme-dot active"
+            data-grad="linear-gradient(135deg,#003a5c,#004f7c,#0066A1)"
+            data-accent-rgb="255,161,0"
+            style="background:linear-gradient(135deg,#003a5c,#0066A1)"
+            title="ULPGC azul"></div>
+          <div class="theme-dot"
+            data-grad="linear-gradient(135deg,#0d0d0d,#1a1a1a,#2c2c2c)"
+            data-accent-rgb="127,119,221"
+            style="background:#1a1a1a"
+            title="Negro"></div>
+          <div class="theme-dot"
+            data-grad="linear-gradient(135deg,#3C3489,#534AB7,#7F77DD)"
+            data-accent-rgb="175,169,236"
+            style="background:linear-gradient(135deg,#3C3489,#7F77DD)"
+            title="Violeta"></div>
+          <div class="theme-dot"
+            data-grad="linear-gradient(135deg,#085041,#0F6E56,#1D9E75)"
+            data-accent-rgb="93,202,165"
+            style="background:linear-gradient(135deg,#085041,#1D9E75)"
+            title="Verde"></div>
+          <div class="theme-dot"
+            data-grad="linear-gradient(135deg,#4a1b0c,#993C1D,#D85A30)"
+            data-accent-rgb="240,153,123"
+            style="background:linear-gradient(135deg,#4a1b0c,#D85A30)"
+            title="Naranja"></div>
+          <div class="theme-dot"
+            data-grad="linear-gradient(135deg,#1a1530,#2d1f5e,#4B3F8A)"
+            data-accent-rgb="127,119,221"
+            style="background:linear-gradient(135deg,#1a1530,#4B3F8A)"
+            title="Índigo"></div>
+        </div>
+      </div>
+
+      <!-- ── COLUMNA DERECHA ── -->
+      <div class="right-col">
+
+        <!-- Vista previa tarjeta -->
+        <div class="panel" style="padding:1rem">
+          <p class="panel-title">Vista previa</p>
+          <div class="bcard" id="bcard">
+            <div class="bcard-accent" id="bc-accent1"></div>
+            <div class="bcard-accent2" id="bc-accent2"></div>
+            <div class="bcard-header">
+              <div class="bcard-avatar" id="bc-avatar">
+                <svg viewBox="0 0 24 24" stroke-width="1.3">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                </svg>
+              </div>
+              <div>
+                <div class="bcard-name" id="bc-name">Tu nombre</div>
+                <div class="bcard-jobtitle" id="bc-job">Cargo</div>
+                <div class="bcard-org" id="bc-org">Empresa</div>
+              </div>
+            </div>
+            <div class="bcard-divider"></div>
+            <div class="bcard-contacts" id="bc-contacts"></div>
+          </div>
+        </div>
+
+        <!-- QR independiente -->
+        <div class="panel" style="padding:1rem">
+          <p class="panel-title">Código QR · enlace directo</p>
+          <div class="qr-box">
+            <div class="qr-canvas-wrap"><div id="qr-target"></div></div>
+            <div style="flex:1;min-width:0">
+              <div class="qr-label">URL del QR</div>
+              <div class="qr-url" id="qr-url-label">—</div>
+              <div class="qr-note">Independiente de la vCard. Usa el campo "URL del QR" para personalizarlo.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Descargar vCard -->
+        <div class="panel" style="padding:1rem">
+          <p class="panel-title">Descargar contacto (vCard)</p>
+          <div class="btns">
+            <button class="btn btn-primary" onclick="downloadVCard(false)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 15V3m0 12-4-4m4 4 4-4"/>
+                <path d="M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/>
+              </svg>
+              Android / General
+            </button>
+            <button class="btn btn-ios" onclick="downloadVCard(true)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"/>
+                <path d="M10 2c0 2.5.5 4 3 4"/>
+              </svg>
+              iPhone / iOS
+            </button>
+          </div>
+          <p class="dl-note">En móvil se abre directamente la app de Contactos. En escritorio descarga el .vcf.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let photoDataURL = null;
+    let currentAccentRgb = '255,161,0';
+
+    function g(id) { return document.getElementById(id); }
+    function val(id) { return g(id).value.trim(); }
+
+    /* ── Foto ── */
+    function handlePhoto(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        photoDataURL = ev.target.result;
+        g('photo-thumb').innerHTML = `<img src="${photoDataURL}" alt="foto">`;
+        updateCard();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    /* ── Actualizar tarjeta ── */
+    function updateCard() {
+      const fname = val('fname'), lname = val('lname');
+      g('bc-name').textContent = [fname, lname].filter(Boolean).join(' ') || 'Tu nombre';
+      g('bc-job').textContent  = val('jobtitle') || 'Cargo';
+      g('bc-org').textContent  = val('org') || 'Empresa';
+
+      /* Avatar */
+      const av = g('bc-avatar');
+      if (photoDataURL) {
+        av.innerHTML = `<img src="${photoDataURL}" alt="foto" style="width:100%;height:100%;object-fit:cover">`;
+      } else {
+        av.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1.3" width="26" height="26"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`;
+      }
+
+      /* Filas de contacto en la tarjeta */
+      const contacts = g('bc-contacts');
+      contacts.innerHTML = '';
+      const a = currentAccentRgb;
+      const items = [
+        { d: 'M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z', v: val('email') },
+        { d: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.33 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z', v: val('phone') },
+        { d: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.33 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.81-.81a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z', v: val('phone2') ? val('phone2') + ' (trabajo)' : '' },
+        { d: 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.523 5.857L.057 23.882l6.198-1.625A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z', v: val('whatsapp') ? val('whatsapp') + ' (WhatsApp)' : '' },
+        { d: 'M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z', v: val('web') ? val('web').replace(/^https?:\/\//, '') : '' },
+        { d: 'M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z M4 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z', v: val('linkedin') },
+        { d: 'M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1.5 4.5h3v1.5h-3V6.5zm0 3h3v8h-3v-8z', v: val('orcid') ? 'ORCID: ' + val('orcid') : '' },
+        { d: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z', v: val('europass') ? 'Europass: ' + val('europass') : '' },
+      ];
+      items.forEach(({ d, v }) => {
+        if (!v) return;
+        const el = document.createElement('div');
+        el.className = 'bcard-contact';
+        el.innerHTML = `<svg class="bc-ico" viewBox="0 0 24 24" style="stroke:rgba(${a},.85)"><path d="${d}"/></svg><span>${v}</span>`;
+        contacts.appendChild(el);
+      });
+
+      generateQR();
+    }
+
+    /* ── QR ── */
+    function generateQR() {
+      const qrUrl = val('qrurl') || val('web');
+      const url = qrUrl ? (qrUrl.startsWith('http') ? qrUrl : 'https://' + qrUrl) : 'https://example.com';
+      g('qr-url-label').textContent = qrUrl || '—';
+      const target = g('qr-target');
+      target.innerHTML = '';
+      new QRCode(target, {
+        text: url, width: 84, height: 84,
+        colorDark: '#000', colorLight: '#fff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+
+    /* ── Construir vCard ── */
+    function buildVCard(ios) {
+      const fname   = val('fname'),   lname    = val('lname');
+      const job     = val('jobtitle'),org      = val('org');
+      const email   = val('email'),   phone    = val('phone');
+      const phone2  = val('phone2'),  whatsapp = val('whatsapp');
+      const web     = val('web'),     linkedin = val('linkedin');
+      const orcid   = val('orcid'),   europass = val('europass');
+      const webUrl  = web ? (web.startsWith('http') ? web : 'https://' + web) : '';
+
+      const lines = [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        `N:${lname};${fname};;;`,
+        `FN:${fname} ${lname}`,
+        org      ? `ORG:${org}`    : '',
+        job      ? `TITLE:${job}`  : '',
+        email    ? (ios ? `EMAIL;type=INTERNET;type=WORK;type=pref:${email}`
+                        : `EMAIL;TYPE=INTERNET,WORK:${email}`) : '',
+        phone    ? (ios ? `TEL;type=CELL;type=VOICE;type=pref:${phone}`
+                        : `TEL;TYPE=CELL:${phone}`) : '',
+        phone2   ? (ios ? `TEL;type=WORK;type=VOICE:${phone2}`
+                        : `TEL;TYPE=WORK,VOICE:${phone2}`) : '',
+        whatsapp ? (ios ? `TEL;type=CELL;type=X-WHATSAPP:${whatsapp}`
+                        : `TEL;TYPE=CELL,X-WHATSAPP:${whatsapp}`) : '',
+        webUrl   ? (ios ? `URL;type=pref:${webUrl}` : `URL:${webUrl}`) : '',
+        linkedin ? `X-SOCIALPROFILE;type=linkedin:${linkedin}` : '',
+        orcid    ? `URL;type=ORCID:https://orcid.org/${orcid}` : '',
+        europass ? `URL;type=Europass:https://europa.eu/europass/eportfolio/screen/user/${europass}` : '',
+      ];
+
+      /* Foto con line-folding RFC vCard (máx 75 chars por línea) */
+      if (photoDataURL) {
+        const base64 = photoDataURL.split(',')[1];
+        const mime   = photoDataURL.split(';')[0].split(':')[1];
+        const type   = mime === 'image/png' ? 'PNG' : 'JPEG';
+        const raw    = `PHOTO;ENCODING=b;TYPE=${type}:${base64}`;
+        const folded = raw.match(/.{1,75}/g).join('\r\n ');
+        lines.push(folded);
+      }
+
+      lines.push('END:VCARD');
+      return lines.filter(Boolean).join('\r\n');
+    }
+
+    /* ── Descarga inteligente por dispositivo ── */
+    function downloadVCard(ios) {
+      const vcard     = buildVCard(ios);
+      const isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isAndroid = /Android/i.test(navigator.userAgent);
+
+      if (isIOS) {
+        /* iOS Safari: data URL → "Añadir a Contactos" directo */
+        window.location.href = 'data:text/x-vcard;charset=utf-8,' + encodeURIComponent(vcard);
+        return;
+      }
+
+      const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+
+      if (isAndroid) {
+        /* Android: sin download attr, el SO ofrece abrir con Contactos */
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        /* Escritorio: descarga con nombre de archivo */
+        const name = [val('fname'), val('lname')].filter(Boolean).join('_') || 'contacto';
+        a.download = `${name}${ios ? '_ios' : ''}.vcf`;
+        a.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /* ── Selector de color + acento dinámico ── */
+    function applyAccent(rgb) {
+      currentAccentRgb = rgb;
+      const bcard = g('bcard');
+      /* avatar border */
+      bcard.querySelector('.bcard-avatar').style.borderColor = `rgba(${rgb},.6)`;
+      /* org badge */
+      const orgEl = g('bc-org');
+      orgEl.style.color = `rgb(${rgb})`;
+      orgEl.style.background = `rgba(${rgb},.15)`;
+      orgEl.style.borderColor = `rgba(${rgb},.35)`;
+      /* accent blobs */
+      g('bc-accent1').style.background = `rgba(${rgb},.13)`;
+      g('bc-accent2').style.background = `rgba(${rgb},.07)`;
+      /* re-render contacts to update icon stroke */
+      updateCard();
+    }
+
+    document.querySelectorAll('.theme-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        g('bcard').style.background = dot.dataset.grad;
+        applyAccent(dot.dataset.accentRgb);
+      });
+    });
+
+    /* ── Init ── */
+    updateCard();
+  </script>
+</body>
+</html>
